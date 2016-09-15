@@ -1,0 +1,33 @@
+package com.mganderson.discounts.example;
+
+import java.math.BigDecimal;
+
+import com.mganderson.discounts.model.Customer;
+import com.mganderson.discounts.model.Order;
+import com.mganderson.discounts.model.Product;
+
+
+rule "Customers from Pennsylvania get a 10% Discount"
+	when
+	 	// when a Customer from Penssylvania has placed an order, apply a 10% discount onto the cost of the Product when pricing the order
+		$customer : Customer( residentState == "PA" )
+		$product : Product( $cost : cost, cost > 100 )
+		$order : Order( customer == $customer, $product == product, cost == null )
+	then
+		modify( $order ) {
+			setCost( $cost.multiply( new BigDecimal( 0.9 ) ).setScale( 0, BigDecimal.ROUND_HALF_UP ) );
+		}
+end
+
+rule "Default Pricing Rule, no discounts are applied"
+	salience -100 // this means that this rule has the lowest priority, it should only execute if no other rules are selected to for, or it should execute last
+	when
+		// when a Customer has placed an Order that has not yet been priced (because no discounts are going to be applied), then the cost of the order is the full price
+		// of the item
+		$order : Order( $product : product, cost == null )
+		Product( this == $product, $cost : cost )
+	then
+		modify( $order ) {
+			setCost( $cost )
+		}
+end
